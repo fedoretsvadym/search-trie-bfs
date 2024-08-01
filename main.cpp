@@ -57,7 +57,7 @@ class Predictor {
     }
   }
   
-  vector<pair<char, float>> get_possibility(vector<char> possible_chars, char given_char) {
+  vector<pair<char, float>> get_possibility(set<char> possible_chars, char given_char) {
     queue<char> cur_stage;
     cur_stage.push(given_char);
     map<char, int> distance;
@@ -68,7 +68,7 @@ class Predictor {
       for(auto it:connections[current_vertex]) {
 	if(distance.find(it) == distance.end()) {
 	  distance[it] = distance[current_vertex] + 1;
-	  if(distance[it] < 7) { // keys that located more than in 7 keys from pressed have too low possibility
+	  if(distance[it] < 3) { // keys that located more than in 3 keys from pressed have too low possibility
 	    cur_stage.push(it);
 	  }
 	}
@@ -76,19 +76,21 @@ class Predictor {
     }
     vector<pair<char, float>> possibilities;
     for(auto it:distance) {
-      possibilities.push_back({it.first, pow(0.3, it.second)});
+      if(possible_chars.find(it.first) != possible_chars.end()) {
+	possibilities.push_back({it.first, pow(0.3, it.second)});
+      }
     }
     return possibilities;
   }
   
  private:
-  unordered_map<char, unordered_set<char> > connections;
-  
+  unordered_map<char, unordered_set<char> > connections;  
 };
+
 
 int main() {
   Predictor pred("QWERTY");
-  vector<pair<char, float>> a = pred.get_possibility(vector<char>({'A', 'B'}), 'B');
+  vector<pair<char, float>> a = pred.get_possibility(set<char>({'A', 'B', 'N', 'J', 'K'}), 'B');
   for(auto it:a) {
     cout << it.first << " " << it.second << "\n";
   }
