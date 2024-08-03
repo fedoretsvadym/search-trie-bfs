@@ -60,7 +60,7 @@ class KeyPredictor {
     }
   }
   
-  vector<pair<char, float>> get_possibility(set<char> possible_chars, char given_char) {
+  vector<pair<char, double>> get_possibility(set<char> possible_chars, char given_char) {
     queue<char> cur_stage;
     cur_stage.push(given_char);
     map<char, int> distance;
@@ -77,10 +77,10 @@ class KeyPredictor {
 	}
       }
     }
-    vector<pair<char, float>> possibilities;
+    vector<pair<char, double>> possibilities;
     for(auto it:distance) {
       if(possible_chars.find(it.first) != possible_chars.end()) {
-	possibilities.push_back({it.first, pow(0.3, it.second)});
+	possibilities.push_back({it.first, 5.0*pow(0.25, it.second)});
       }
     }
     return possibilities;
@@ -118,38 +118,47 @@ public:
     return result;
   }
 
-  vector<pair<string, float> > get_possibility(string users_word) {
-    vector<pair<string, float>> possibilities;
+  vector<pair<string, double> > get_possibility(string users_word) {
+    vector<pair<string, double>> possibilities;
     TrieNode* current_node = root;
-    queue<pair<TrieNode*, pair<float, string> > > processing_queue;
-    processing_queue.push({root, {0, ""}});
+    queue<pair<TrieNode*, pair<double, string> > > processing_queue;
+    processing_queue.push({root, {1, ""}});
     for(auto key:users_word) {
       set<char> possible_chars;
-      queue<pair<TrieNode*, pair<float, string> > > copy = processing_queue;
-      while(!copy.empty()) {
+      queue<pair<TrieNode*, pair<double, string> > > copy = processing_queue;
+      while(!copy.empty()) {	
 	for(auto pair : copy.front().first->connections) {
 	  possible_chars.insert(pair.first);
 	}
 	copy.pop();
       }
-      vector<pair<char, float> > predicted = key_predictor.get_possibility(possible_chars, key);
+      vector<pair<char, double> > predicted = key_predictor.get_possibility(possible_chars, key);
       int len = processing_queue.size();
       for(int i = 0; i < len; i++) {
-	pair<TrieNode*, pair<float, string> > cur = processing_queue.front();
+	pair<TrieNode*, pair<double, string> > cur = processing_queue.front();
 	processing_queue.pop();
 	TrieNode* current_node = cur.first;
-	float possibility = cur.second.first;
+	double possibility = cur.second.first;
 	string s = cur.second.second;
+	if(current_node->is_word) {
+	  possibilities.push_back({s, possibility});
+	}
 	for(auto it:predicted) {
 	  if(current_node->connections[it.first] != NULL) {
-	    if(current_node->connections[it.first]->is_word) {
-	      possibilities.push_back({s + it.first, possibility + it.second});
-	    }
-	    processing_queue.push({current_node->connections[it.first], {possibility + it.second, s + it.first}});
+	    processing_queue.push({current_node->connections[it.first], {possibility * it.second, s + it.first}});
 	  }
 	}
       }
-      //TODO predict longer words
+    }
+    while(!processing_queue.empty()) {
+      auto current = processing_queue.front();
+      if(current.first->is_word) {
+	possibilities.push_back({current.second.second, current.second.first});
+      }
+      for(auto pair : current.first->connections) {
+	processing_queue.push({pair.second, {current.second.first, current.second.second + pair.first}});
+      }
+      processing_queue.pop();
     }
     return possibilities;
   }
@@ -170,9 +179,9 @@ private:
 
 int main() {
   WordPredictor pred("QWERTY");
-  bool status = pred.insert(vector<string>({"ASD", "BSC", "QW", "QWE", "QWD", "POQ", "SWY"}));
+  bool status = pred.insert(vector<string>({"ASD", "BSC", "QW", "QWE", "QWD", "POQ", "SWY", "QWEG", "QWEAS"}));
   cout << "insert status : " << status << "\n";
-  vector<pair<string, float> > a = pred.get_possibility("QWE");
+  vector<pair<string, double> > a = pred.get_possibility("QWE");
   for(auto it:a) {
     cout << it.first << " " << it.second << "\n";
   }
